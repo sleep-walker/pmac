@@ -59,7 +59,7 @@ int read_random_buf(void) {
 
 	num = fread(buf, sizeof(char), addr_len, random_file);
 	if (num < addr_len)
-		printf("Cannot read %d bytes from %s. Read only %d bytes.\n", addr_len, random_device, num);
+		printf("Cannot read %d bytes from %s. Read only %ld bytes.\n", addr_len, random_device, num);
 	fclose(random_file);
 	return num = addr_len;
 }
