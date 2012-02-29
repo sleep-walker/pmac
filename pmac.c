@@ -59,7 +59,7 @@ int read_random_buf(void) {
 
 	num = fread(buf, sizeof(char), addr_len, random_file);
 	if (num < addr_len)
-		printf("Cannot read %d bytes from %s. Read only %ld bytes.\n", addr_len, random_device, num);
+		printf("Cannot read %d bytes from %s. Read only %d bytes.\n", addr_len, random_device, num);
 	fclose(random_file);
 	return num = addr_len;
 }
@@ -115,6 +115,11 @@ int select_vendor(char *addr, char *vendor) {
 	int len = strlen(vendor);
 	int num = sizeof(vendors) / sizeof(struct vendor_mac);
        
+	if (len == 0) {
+		printf("Vendor name is empty.\n");
+		return 0;
+	}
+
 	if (!strncmp("same", vendor, len)) {
 		char old_addr[addr_len];
 		if (!get_address_from_interface(interface, old_addr))
@@ -133,7 +138,7 @@ int select_vendor(char *addr, char *vendor) {
 		for (i = 0; i < num; ++i)
 			if (strcmp(vendors[i].name, vendor) == 0)
 				break;
-		if ((i = num - 1) && (strcmp(vendors[i].name, vendor) != 0)) {
+		if (i == num) {
 			printf("Vendor '%s' not found.\n", vendor);
 			return 0;
 		}
@@ -205,14 +210,14 @@ int main(int argc, char *argv[]) {
 				if(optarg) {
 					vendor = malloc(sizeof(optarg) + 1);
 					printf("vendor: %s\n", optarg);
-					strncpy(vendor, optarg, sizeof(optarg));
+					strncpy(vendor, optarg, sizeof(optarg) + 1);
 				}
 				break;
 			case 'i':
 				if(optarg) {
 					interface = malloc(sizeof(optarg) + 1);
 					printf("interface: %s\n", optarg);
-					strncpy(interface, optarg, sizeof(optarg));
+					strncpy(interface, optarg, sizeof(optarg) + 1);
 				}
 				break;
 			case 'p':
@@ -226,7 +231,7 @@ int main(int argc, char *argv[]) {
 				if(optarg) {
 					manually = malloc(sizeof(optarg) + 1);
 					printf("manually: %s\n", optarg);
-					strncpy(manually, optarg, sizeof(optarg));
+					strncpy(manually, optarg, sizeof(optarg) + 1);
 				}
 				break;
 			case '?':
