@@ -40,7 +40,7 @@ int print;
 char *vendor, *interface, *manually;
 
 /* buffer for storing random values */
-char buf[addr_len + extra_bytes];
+unsigned char buf[addr_len + extra_bytes];
 
 /* AF_INET socket for ioctl() calls.*/
 int skfd = -1;
@@ -59,12 +59,20 @@ int read_random_buf(void) {
 
 	num = fread(buf, sizeof(char), addr_len, random_file);
 	if (num < addr_len)
-		printf("Cannot read %d bytes from %s. Read only %d bytes.\n", addr_len, random_device, num);
+		printf("Cannot read %d bytes from %s. Read only %ld bytes.\n", addr_len, random_device, num);
 	fclose(random_file);
 	return num = addr_len;
 }
 
-void generate_device_part(char *addr) {
+void print_address(unsigned char *addr) {
+	int i;
+
+	for (i = 0; i < addr_len - 1; ++i)
+		printf("%2.02x:", (unsigned char)addr[i]);
+	printf("%2.02x\n", (unsigned char)addr[addr_len - 1]);
+}
+
+void generate_device_part(unsigned char *addr) {
 	int i;
 
 	for (i = vendor_len; i < addr_len; ++i)
@@ -79,38 +87,39 @@ int init_socket(void) {
 	return 0;
 }
 
-int get_address_from_interface(char *interface, char *addr) {
+int get_address_from_interface(char *interface, unsigned char *addr) {
 	struct ifreq ifr;
 	unsigned char *hwaddr;
 
-	strncpy(ifr.ifr_name, interface, strlen(interface));
+	strncpy(ifr.ifr_name, interface, strlen(interface) + 1);
 	if (ioctl(skfd, SIOCGIFHWADDR, &ifr) < 0) {
-		perror("ioctl");
+		perror("ioctl(SIOCGIFHWADDR)");
 		return 0;
 	}
 	hwaddr = (unsigned char *)ifr.ifr_hwaddr.sa_data;
-
+	printf("present MAC address: ");
+	print_address(hwaddr);
 	addr[0] = hwaddr[0];
 	addr[1] = hwaddr[1];
 	addr[2] = hwaddr[2];
 	return 1;
 }
 
-int set_address_to_interface(char *interface, char *addr) {
+int set_address_to_interface(char *interface, unsigned char *addr) {
 	struct ifreq ifr;
 
-	strncpy(ifr.ifr_name, interface, strlen(interface));
-	memcpy(&(ifr.ifr_hwaddr), addr, sizeof(struct sockaddr));
+	strncpy(ifr.ifr_name, interface, strlen(interface) + 1);
+	memcpy(&(ifr.ifr_hwaddr.sa_data), addr, sizeof(struct sockaddr));
 	ifr.ifr_hwaddr.sa_family = ARPHRD_ETHER;
 	printf("Setting address to interface\n");
 	if (ioctl(skfd, SIOCSIFHWADDR, &ifr) < 0) {
-		perror("ioctl");
+		perror("ioctl(SIOCSIFHWADDR)");
 		return 0;
 	}
 	return 1;
 }
 
-int select_vendor(char *addr, char *vendor) {
+int select_vendor(unsigned char *addr, char *vendor) {
 	int i;
 	int len = strlen(vendor);
 	int num = sizeof(vendors) / sizeof(struct vendor_mac);
@@ -121,7 +130,7 @@ int select_vendor(char *addr, char *vendor) {
 	}
 
 	if (!strncmp("same", vendor, len)) {
-		char old_addr[addr_len];
+		unsigned char old_addr[addr_len];
 		if (!get_address_from_interface(interface, old_addr))
 			return 0;
 		addr[0] = old_addr[0];
@@ -147,14 +156,6 @@ int select_vendor(char *addr, char *vendor) {
 	addr[1] = vendors[i].mac[1];
 	addr[2] = vendors[i].mac[2];
 	return 1;
-}
-
-void print_address(char *addr) {
-	int i;
-
-	for (i = 0; i < addr_len - 1; ++i)
-		printf("%02x:", addr[i]);
-	printf("%02x\n", addr[addr_len - 1]);
 }
 
 void cleanup(void) {
@@ -186,7 +187,7 @@ void print_help(void) {
 }
 
 int main(int argc, char *argv[]) {
-	char addr[] = { 0, 1, 2, 3, 4, 5 };
+	unsigned char addr[] = { 0, 1, 2, 3, 4, 5 };
 	int c;
 	struct option longopts[] = {
 		{"vendor",    1, 0, 'v'},
