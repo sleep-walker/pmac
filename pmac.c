@@ -44,7 +44,7 @@ struct vendor_mac {
 };
 
 /* configuration read from command line */
-int print;
+int print, force;
 char *vendor, *interface, *manually;
 
 /* buffer for storing random values */
@@ -67,7 +67,7 @@ int read_random_buf(void) {
 
 	num = fread(buf, sizeof(char), addr_len, random_file);
 	if (num < addr_len)
-		printf("Cannot read %d bytes from %s. Read only %d bytes.\n", addr_len, random_device, num);
+		printf("Cannot read %d bytes from %s. Read only %ld bytes.\n", addr_len, random_device, num);
 	fclose(random_file);
 	return num = addr_len;
 }
@@ -90,7 +90,7 @@ int init_socket(void) {
 int get_address_from_interface(char *interface, unsigned char *addr) {
 	struct ifreq ifr;
 
-	strncpy(ifr.ifr_name, interface, strlen(interface));
+	strncpy(ifr.ifr_name, interface, strlen(interface) + 1);
 	if (ioctl(skfd, SIOCGIFHWADDR, &ifr) < 0) {
 		printf("Cannot read HW address from interface:\n");
 		perror("ioctl(SIOCGIFHWADDR)");
@@ -102,15 +102,51 @@ int get_address_from_interface(char *interface, unsigned char *addr) {
 
 int set_address_to_interface(char *interface, unsigned char *addr) {
 	struct ifreq ifr;
+	char ifup = 0;
 
-	strncpy(ifr.ifr_name, interface, strlen(interface));
-	memcpy(&(ifr.ifr_hwaddr), addr, sizeof(struct sockaddr));
+	strncpy(ifr.ifr_name, interface, strlen(interface) + 1);
+	if (ioctl(skfd, SIOCGIFFLAGS, &ifr) < 0) {
+		printf("Cannot read flags from interface:\n");
+		perror("ioctl(SIOCGIFFLAGS)");
+		return 0;
+	}
+
+	/* check if interface is up, bring it down when forced */
+	if (ifr.ifr_flags & IFF_UP) {
+		if (!force) {
+			printf("Interface is up, cannot change HW address\n");
+			return 0;
+		}
+		ifup = 1;
+		ifr.ifr_flags &= ~IFF_UP;
+		if (ioctl(skfd, SIOCSIFFLAGS, &ifr) < 0) {
+			printf("Cannot set flags on interface:\n");
+			perror("ioctl(SIOCSIFFLAGS)");
+			return 0;
+		}
+	}
+
+	memcpy(&(ifr.ifr_hwaddr.sa_data), addr, sizeof(struct sockaddr));
 	ifr.ifr_hwaddr.sa_family = ARPHRD_ETHER;
 	printf("Setting address to interface\n");
 	if (ioctl(skfd, SIOCSIFHWADDR, &ifr) < 0) {
 		printf("Cannot assign HW address to interface:\n");
 		perror("ioctl(SIOCSIFHWADDR)");
 		return 0;
+	}
+
+	if (ifup) {
+		if (ioctl(skfd, SIOCGIFFLAGS, &ifr) < 0) {
+			printf("Cannot read flags from interface:\n");
+			perror("ioctl(SIOCGIFFLAGS)");
+			return 0;
+		}
+		ifr.ifr_flags |= IFF_UP;
+		if (ioctl(skfd, SIOCSIFFLAGS, &ifr) < 0) {
+			printf("Cannot set flags to interface:\n");
+			perror("ioctl(SIOCSIFFLAGS)");
+			return 0;
+		}
 	}
 	return 1;
 }
@@ -204,7 +240,7 @@ int parse_manual_address(char *input, unsigned char *addr) {
 				if (tmp >= 0)
 					addr[separator ? (ptr - input)/3 : (ptr - input)/2] = tmp << 4;
 				else {
-					printf("Unexpected character '%c' in the positition %d of MAC address (expected first digit\n", *ptr, ptr - input + 1);
+					printf("Unexpected character '%c' in the positition %ld of MAC address (expected first digit\n", *ptr, ptr - input + 1);
 					return 0;
 				}
 				state = second;
@@ -214,7 +250,7 @@ int parse_manual_address(char *input, unsigned char *addr) {
 				if (tmp >= 0)
 					addr[separator ? (ptr - input)/3 : (ptr - input)/2] |= tmp;
 				else {
-					printf("Unexpected character '%c' in the positition %d of MAC address (expected second digit)\n", *ptr, ptr - input + 1);
+					printf("Unexpected character '%c' in the positition %ld of MAC address (expected second digit)\n", *ptr, ptr - input + 1);
 					return 0;
 				}
 				if (separator)
@@ -226,7 +262,7 @@ int parse_manual_address(char *input, unsigned char *addr) {
 			case separ:
 				/* we're reading separator */
 				if (*ptr != separator) {
-					printf("Unexpected separator '%c' in the position %d of MAC address\n", *ptr, ptr - input + 1);
+					printf("Unexpected separator '%c' in the position %ld of MAC address\n", *ptr, ptr - input + 1);
 					return 0;
 				}
 				state = first;
@@ -269,6 +305,7 @@ void print_help(void) {
 		"-i  --interface int  interface to read MAC address and/or to write MAC to\n"
 		"-v  --vendor name    vendor name to be used for vendor part of MAC address\n"
 		"-m  --manually addr  do not generate random, manually set address to addr\n"
+		"-f  --force          if interface is up, bring it down to change the address\n"
 		"-l  --list           list supported vendor names\n"
 		"-h  --help           print this screen\n"
 		"\n", pmac_version);
@@ -282,6 +319,7 @@ int main(int argc, char *argv[]) {
 		{"interface", 1, 0, 'i'},
 		{"print",     0, 0, 'p'},
 		{"manually",  1, 0, 'm'},
+		{"force",     0, 0, 'f'},
 		{"vendor",    0, 0, 'l'},
 		{"help",      0, 0, 'h'},
 		{0, 0, 0, 0},
@@ -291,7 +329,7 @@ int main(int argc, char *argv[]) {
 	while (1) {
 		int idx;
 
-		c = getopt_long(argc, argv, "lhpv:i:m:", longopts, &idx);
+		c = getopt_long(argc, argv, "flhpv:i:m:", longopts, &idx);
 		if (c == -1)
 			break;
 
@@ -312,6 +350,9 @@ int main(int argc, char *argv[]) {
 				break;
 			case 'p':
 				print = 1;
+				break;
+			case 'f':
+				force = 1;
 				break;
 			case 'l':
 				list_vendors();
