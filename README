@@ -1,0 +1,16 @@
+pmac
+----
+proper MAC address generator and changer
+
+Tomas Cech <sleep_walker@suse.cz>
+2012
+
+The main purpose of this tool is to fake your hardware address (MAC) for WiFi networks like Internet coffees, open networks and similar. It should generate random but believable addresses.
+
+For usage check manpage.
+
+License is GPLv2.
+
+You can find recent version on GitHub:
+
+https://sleep-walker@github.com/sleep-walker/pmac.git
