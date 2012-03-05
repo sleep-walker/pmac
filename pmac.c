@@ -44,7 +44,7 @@ struct vendor_mac {
 };
 
 /* configuration read from command line */
-int print, force;
+int print, force, local, multi;
 char *vendor, *interface, *manually;
 
 /* buffer for storing random values */
@@ -307,6 +307,8 @@ void print_help(void) {
 		"-m  --manually addr  do not generate random, manually set address to addr\n"
 		"-f  --force          if interface is up, bring it down to change the address\n"
 		"-l  --list           list supported vendor names\n"
+		"-L  --local          set 'locally administered' bit in result MAC address, default no\n"
+		"-M  --multicast      set 'multicast' bit in result MAC address, default no\n"
 		"-h  --help           print this screen\n"
 		"\n", pmac_version);
 }
@@ -321,6 +323,8 @@ int main(int argc, char *argv[]) {
 		{"manually",  1, 0, 'm'},
 		{"force",     0, 0, 'f'},
 		{"vendor",    0, 0, 'l'},
+		{"local",     0, 0, 'L'},
+		{"multicast", 0, 0, 'M'},
 		{"help",      0, 0, 'h'},
 		{0, 0, 0, 0},
 	};
@@ -353,6 +357,12 @@ int main(int argc, char *argv[]) {
 				break;
 			case 'f':
 				force = 1;
+				break;
+			case 'L':
+				local = 1;
+				break;
+			case 'M':
+				multi = 1;
 				break;
 			case 'l':
 				list_vendors();
@@ -405,12 +415,25 @@ int main(int argc, char *argv[]) {
 
 		/* prepare device part of address */
 		generate_device_part(addr);
+
+		/* if result address should have 'locally administered' bit set, do so */
+		if (local)
+			addr[0] |= 0x2;
+		else
+			addr[0] &= ~0x2;
+
+		/* if result address should be multicast one, do so */
+		if (multi)
+			addr[0] |= 0x1;
+		else
+			addr[0] &= ~0x1;
 	}
 	else {
 		/* address set manually - read it */
 		if (!parse_manual_address(manually, addr))
 			return 1;
 	}
+
 
 	if (interface)
 		/* interface defined */

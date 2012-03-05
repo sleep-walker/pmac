@@ -11,6 +11,8 @@ pmac \- proper MAC address generator and changer
 .RI <\| name \|> \|]
 .RB [\| {\| \-m \||\| \-\-manually \|}
 .RI <\| address \|> \|]
+.RB [\| {\| \-M \||\| \-\-multicast \|} \|]
+.RB [\| {\| \-L \||\| \-\-local \|} \|]
 .RB [\| {\| \-f \||\| \-\-force \|} \|]
 .RB [\| {\| \-p \||\| \-\-print \|} \|]
 .SH DESCRIPTION
@@ -40,4 +42,9 @@ don't set hardware address to interface but print it to standard output
 .TP
 .B -f, --force
 if interface is up, bring it down, set hardware address and bring it up again
-
+.TP
+.B -M, --multicast
+set multicast bit in the result address, this bit is cleared by default, use only if you know, what you're doing
+.TP
+.B -L, --local
+set 'locally administered' bit in the result address, this bit is cleared by default, by setting this bit you are announcing that the hardware address you use is not the one given by your vendor, use only if you know, what you're doing
