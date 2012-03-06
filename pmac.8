@@ -1,13 +1,43 @@
-.TH pmac 8 "3 March 2012"
+.TH pmac 8 "5 March 2012"
 .SH NAME
 pmac \- proper MAC address generator and changer
 .SH SYNOPSIS
 .B pmac
-[ { \-h | \-\-help } ]
-[ { \-l | \-\-list } ]
-[ { \-i | \-\-interface } int ]
-[ { \-v | \-\-vendor } name ]
-[ { \-m | \-\-manually } address ]
-[ { \-f | \-\-force } ]
-[ { \-p | \-\-print } ]
+.RB [\| {\| \-h \||\| \-\-help \|} \|]
+.RB [\| {\| \-l \||\| \-\-list } ]
+.RB [\| {\| \-i \||\| \-\-interface \|}
+.RI <\| int \|>\|]
+.RB [\| {\| \-v \||\| \-\-vendor \|}
+.RI <\| name \|> \|]
+.RB [\| {\| \-m \||\| \-\-manually \|}
+.RI <\| address \|> \|]
+.RB [\| {\| \-f \||\| \-\-force \|} \|]
+.RB [\| {\| \-p \||\| \-\-print \|} \|]
 .SH DESCRIPTION
+.B pmac
+is simple tool for hiding real HW address of the device. Why to do so? Connecting to WiFi network shows your MAC address to others and let other identify you each time you connect. If the WiFi hotspot is also open, they can see your unencrypted traffic. In a long term view others can observe your activity and customs. This tool provides you simple and small step towards anonymity in the areas you connect.
+If interface is up, hardware assignment will fail. To force this assignment use parameter \fB-f\fP (resp. \fB--force\fP).
+
+.SH OPTIONS
+.TP
+.B -h, --help
+shows short help for this utility
+.TP
+.B -l, --list
+list known vendors options, not much useful yet
+.TP
+.B -i, --interface <\fIint\fP>
+use network interface \fIint\fP, when vendor is set to \fIsame\fP, vendor will be read from this interface, when \fB-p\fP is not set, generated address will be set to this interface
+.TP
+.B -v, --vendor <\fIname\fP>
+vendor MAC address part of vendor \fIname\fP will be used, special vendor names are \fBany\fP, which will randomly select vendor itself, \fBrandom\fP which will use completely random vendor part or \fBsame\fP, which will read current vendor part from interface specified with option \fB-i\fP (resp. \fB--interface\fP)
+.TP
+.B -m, --manually <\fIaddr\fP>
+instead of generating random hardware address use \fIaddr\fP, parameter \fB-v\fP (resp. \fB--vendor\fP) is ignored,  not much useful with option \fB-p\fP (resp. \fB--print\fP) also used
+.TP
+.B -p, --print
+don't set hardware address to interface but print it to standard output
+.TP
+.B -f, --force
+if interface is up, bring it down, set hardware address and bring it up again
+
